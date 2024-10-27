@@ -14,7 +14,7 @@ class BookGUI:
         self.master.configure(bg=Colors.BACKGROUND_COLOR)
 
         # Загрузка пользовательского шрифта
-        custom_font_path = "assets/fonts/YourFontName.ttf"  # Убедитесь, что путь к шрифту правильный
+        custom_font_path = "assets/fonts/Outfit-Black.ttf"
         self.custom_font = font.Font(family="CustomFont", size=14)
         self.master.option_add("*Font", self.custom_font)
 
@@ -154,26 +154,26 @@ class BookGUI:
         return [f for f in os.listdir(directory) if f.endswith('.txt')]
 
     def open_book(self, book_name):
+        # Получение пути к книге
         book_path = os.path.join("books", book_name)
-        encodings = ['utf-8', 'latin-1', 'cp1251']  # Список кодировок для проверки
+        encodings = ['utf-8', 'latin-1', 'cp1251']
 
+        # Чтение содержимого книги
         for encoding in encodings:
             try:
                 with open(book_path, 'r', encoding=encoding) as book_file:
                     content = book_file.readlines()
-                break  # Если файл успешно прочитан, выходим из цикла
+                break
             except UnicodeDecodeError:
-                continue  # Пытаемся следующую кодировку
+                continue
 
-        # Открытие нового окна для отображения книги
-        self.book_window = tk.Toplevel(self.master)
-        self.book_window.title(book_name)
-        self.book_window.geometry("800x600")
-        self.book_window.configure(bg=Colors.BACKGROUND_COLOR)
+        # Очистка предыдущего содержимого
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
 
         # Заголовок книги
         title_label = ctk.CTkLabel(
-            self.book_window,
+            self.main_frame,
             text=book_name,
             font=("CustomFont", 24, "bold"),
             fg_color=Colors.BACKGROUND_COLOR,
@@ -181,20 +181,23 @@ class BookGUI:
         )
         title_label.pack(pady=10)
 
+        # Создание фрейма для текста книги
+        text_frame = ctk.CTkFrame(self.main_frame, fg_color="white", width=600, height=400)
+        text_frame.place(relx=0.5, rely=0.5, anchor="center")  # Центрируем фрейм
+
         # Текстовая область для отображения страницы
-        self.page_text = tk.Text(self.book_window, wrap=tk.WORD, bg="white", fg="black", font=("CustomFont", 16))
-        self.page_text.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+        self.page_text = tk.Text(text_frame, wrap=tk.WORD, bg="white", fg="black", font=("CustomFont", 16))
+        self.page_text.pack(fill=tk.BOTH, expand=True)
 
         # Инициализация переменных для управления страницами
         self.content = content
         self.current_page = 0
 
-        # Кнопка "Назад" для возврата к списку книг
+        # Кнопка "Назад" для возврата к списку книг в левом нижнем углу
         back_button = ctk.CTkButton(
-            self.book_window,
-            image=self.back_icon_photo,
-            text=" Назад",
-            command=self.book_window.destroy,
+            self.main_frame,
+            text="Назад",
+            command=self.show_book_list,
             fg_color=Colors.BUTTON_COLOR,
             text_color=Colors.BUTTON_TEXT_COLOR,
             font=("CustomFont", 14),
@@ -202,14 +205,15 @@ class BookGUI:
             height=40,
             corner_radius=10
         )
-        back_button.pack(side="left", padx=10, pady=10)
+        back_button.pack(side=tk.BOTTOM, anchor="sw", padx=10, pady=(10, 20))  # Левый нижний угол с отступом
 
-        # Кнопка "Назад" для листания
+        # Кнопка "Назад" для листания с иконкой
         prev_icon = Image.open("assets/images/icons/prev.png").resize((20, 20), Image.LANCZOS)
-        self.prev_icon_photo = ImageTk.PhotoImage(prev_icon)
+        self.prev_icon_photo = ctk.CTkImage(prev_icon)  # Используем CTkImage вместо PIL.ImageTk.PhotoImage
 
         prev_button = ctk.CTkButton(
-            self.book_window,
+            self.main_frame,
+            text=" ",
             image=self.prev_icon_photo,
             command=lambda: self.change_page(-1),
             fg_color=Colors.BUTTON_COLOR,
@@ -219,14 +223,15 @@ class BookGUI:
             height=40,
             corner_radius=10
         )
-        prev_button.pack(side="left", padx=10, pady=10)
+        prev_button.place(relx=0.1, rely=0.7, anchor="sw")  # Левый нижний угол (подняли выше)
 
-        # Кнопка "Вперед" для листания
+        # Кнопка "Вперед" для листания с иконкой
         next_icon = Image.open("assets/images/icons/next.png").resize((20, 20), Image.LANCZOS)
-        self.next_icon_photo = ImageTk.PhotoImage(next_icon)
+        self.next_icon_photo = ctk.CTkImage(next_icon)  # Используем CTkImage вместо PIL.ImageTk.PhotoImage
 
         next_button = ctk.CTkButton(
-            self.book_window,
+            self.main_frame,
+            text=" ",
             image=self.next_icon_photo,
             command=lambda: self.change_page(1),
             fg_color=Colors.BUTTON_COLOR,
@@ -236,35 +241,26 @@ class BookGUI:
             height=40,
             corner_radius=10
         )
-        next_button.pack(side="left", padx=10, pady=10)
+        next_button.place(relx=0.9, rely=0.7, anchor="se")  # Правый нижний угол (подняли выше)
 
-        # Метка для отображения номера текущей страницы
+        # Метка для отображения номера текущей страницы в правом нижнем углу
         self.page_label = ctk.CTkLabel(
-            self.book_window,
+            self.main_frame,
             text=f"Страница {self.current_page + 1} из {len(self.content)}",
             fg_color=Colors.BACKGROUND_COLOR,
             text_color=Colors.TEXT_COLOR,
             font=("CustomFont", 14)
         )
-        self.page_label.pack(side="bottom", pady=10)
+        self.page_label.place(relx=0.9, rely=1, anchor="se", padx=10, pady=10)  # Правый нижний угол
 
         # Инициализация отображения первой страницы
-        self.display_page()
-
-    def change_page(self, direction):
-        # Изменение текущей страницы и обновление отображения
-        new_page = self.current_page + direction
-        if 0 <= new_page < len(self.content):
-            self.current_page = new_page
-            self.display_page()
-
-    def display_page(self):
-        # Отображение текста текущей страницы
         self.page_text.delete(1.0, tk.END)  # Очистка текстовой области
         self.page_text.insert(tk.END, self.content[self.current_page])  # Вставка текста текущей страницы
 
-        # Обновление метки с номером страницы
-        self.page_label.configure(text=f"Страница {self.current_page + 1} из {len(self.content)}")
+
+
+
+
 
 
 
