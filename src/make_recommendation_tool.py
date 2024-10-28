@@ -2,8 +2,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 from books_db import books
 
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 def make_recommendation(user_tags, user_authors, user_types):
+    # Преобразуем автора и типы пользователя в списки, если они не списки
+    if isinstance(user_tags, str):
+        user_tags = [user_tags]
+    if isinstance(user_authors, str):
+        user_authors = [user_authors]
+    if isinstance(user_types, str):
+        user_types = [user_types]
 
     # Объединяем все теги, авторов и типы для каждой книги в одну строку
     book_data = [
@@ -21,8 +30,11 @@ def make_recommendation(user_tags, user_authors, user_types):
     # Рассчитываем косинусное сходство между книгами и предпочтениями пользователя
     similarities = cosine_similarity(user_vector, book_vectors).flatten()
 
-    # Сортируем книги по степени соответствия предпочтениям
-    recommended_books = sorted(zip(books, similarities), key=lambda x: x[1], reverse=True)
+    # Сортируем книги по степени соответствия предпочтениям и берем топ-3
+    recommended_books = sorted(zip(books, similarities), key=lambda x: x[1], reverse=True)[:3]
 
-    recommend_book = recommended_books[max(recommended_books, key=recommended_books.get)]
-    return f"{recommend_book['title']} (Автор: {recommend_book['author']}, Тип: {recommend_book['type']})"
+    # Возвращаем список из топ-3 рекомендованных книг
+    return [book for book, similarity in recommended_books]
+
+
+

@@ -4,6 +4,7 @@ from tkinter import filedialog, font, messagebox
 from src.styles import Colors
 import customtkinter as ctk
 from PIL import Image, ImageTk
+from src.make_recommendation_tool import make_recommendation  # Импорт функции make_recommendation
 
 
 class BookGUI:
@@ -47,6 +48,9 @@ class BookGUI:
         # Логотип снизу
         self.display_logo(self.main_frame)
 
+        back_icon = Image.open("assets/images/icons/prev.png").resize((20, 20), Image.LANCZOS)
+        self.back_icon_photo = ImageTk.PhotoImage(back_icon)
+
     def create_button(self, master, text, command):
         # Создание кнопок с закругленными углами
         button = ctk.CTkButton(
@@ -57,7 +61,7 @@ class BookGUI:
             font=("CustomFont", 20),
             width=300,
             height=60,
-            corner_radius=15,  # Радиус закругления углов
+            corner_radius=15,
             command=command
         )
         button.pack(pady=20)
@@ -66,7 +70,7 @@ class BookGUI:
         # Загрузка изображения логотипа
         logo_path = "assets/images/logo.png"
         logo_image = Image.open(logo_path)
-        logo_image = logo_image.resize((150, 150), Image.LANCZOS)  # Изменение размера изображения логотипа
+        logo_image = logo_image.resize((150, 150), Image.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_image)
 
         # Отображение логотипа
@@ -84,56 +88,167 @@ class BookGUI:
             title="Выберите книгу для загрузки"
         )
         if file_path:
-            # Сохранение книги в папку "books"
             book_name = os.path.basename(file_path)
             destination = os.path.join("books", book_name)
-            os.rename(file_path, destination)  # Перемещение книги в папку "books"
+            os.rename(file_path, destination)
             print(f"Книга загружена: {destination}")
 
     def find_book_by_interest(self):
-        # Логика поиска книги по интересам
-        print("Функция поиска книги по интересам не реализована")
-
-    def show_book_list(self):
-        # Очистка предыдущего содержимого
+        # Очистка основного экрана
         for widget in self.main_frame.winfo_children():
             widget.destroy()
+
+        # Назад к главному экрану
+        back_button = ctk.CTkButton(
+            self.main_frame,
+            text="Назад",
+            command=self.create_main_screen,
+            fg_color=Colors.BUTTON_COLOR,
+            text_color=Colors.BUTTON_TEXT_COLOR,
+            font=("CustomFont", 14),
+            width=120,
+            height=40,
+            corner_radius=10
+        )
+        back_button.pack(side="top", anchor="nw", padx=10, pady=10)
 
         # Заголовок
         title_label = ctk.CTkLabel(
             self.main_frame,
+            text="Выберите интересы для поиска книги",
+            font=("CustomFont", 24, "bold"),
+            fg_color=Colors.BACKGROUND_COLOR,
+            text_color=Colors.TEXT_COLOR
+        )
+        title_label.pack(pady=20)
+
+        # Поле для ввода автора
+        author_label = ctk.CTkLabel(self.main_frame, text="Автор:")
+        author_label.pack()
+        author_entry = ctk.CTkEntry(self.main_frame, width=300)
+        author_entry.pack(pady=5)
+
+        # Кнопки выбора тегов
+        self.selected_tags = []
+        tags = ["классика", "мистика", "философия", "любовь", "антиутопия", "фантастика", "приключения", "драма"]
+        for tag in tags:
+            tag_button = ctk.CTkCheckBox(
+                self.main_frame,
+                text=tag,
+                command=lambda t=tag: self.toggle_tag(t)
+            )
+            tag_button.pack(pady=2)
+
+        # Кнопки выбора типа книги
+        self.selected_type = tk.StringVar()
+        types = ["роман", "фэнтези", "научно-популярная", "триллер", "драма"]
+        for t in types:
+            type_button = ctk.CTkRadioButton(
+                self.main_frame,
+                text=t,
+                variable=self.selected_type,
+                value=t
+            )
+            type_button.pack(pady=2)
+
+        # Кнопка поиска
+        search_button = ctk.CTkButton(
+            self.main_frame,
+            text="Найти книгу",
+            command=lambda: self.show_recommendation(
+                author_entry.get(),
+                self.selected_tags,
+                self.selected_type.get()
+            )
+        )
+        search_button.pack(pady=20)
+
+    def toggle_tag(self, tag):
+        if tag in self.selected_tags:
+            self.selected_tags.remove(tag)
+        else:
+            self.selected_tags.append(tag)
+
+    def show_recommendation(self, tags, author, book_type):
+        # Получаем рекомендации
+        recommended_books = make_recommendation(tags, author, book_type)
+
+        # Очистка предыдущего содержимого
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+        if recommended_books:
+            recommendation_text = ""
+            for book in recommended_books:
+                recommendation_text += (
+                    f"Рекомендуемая книга: {book['title']}\n"
+                    f"Автор: {book['author']}\n"
+                    f"Тип: {book['type']}\n"
+                    f"Теги: {', '.join(book['tags'])}\n"
+                    "-------------------------\n"
+                )
+        else:
+            recommendation_text = "Рекомендации не найдены."
+
+        recommendation_label = ctk.CTkLabel(
+            self.main_frame,
+            text=recommendation_text,
+            fg_color=Colors.BACKGROUND_COLOR,
+            text_color=Colors.TEXT_COLOR,
+            font=("CustomFont", 18),
+            wraplength=700,
+            justify="left"
+        )
+        recommendation_label.pack(pady=20)
+
+        # Добавляем кнопку "Назад"
+        back_button = ctk.CTkButton(
+            self.main_frame,
+            text=" Назад",
+            image=self.back_icon_photo,
+            command=self.create_main_screen,
+            fg_color=Colors.BUTTON_COLOR,
+            text_color=Colors.BUTTON_TEXT_COLOR,
+            font=("CustomFont", 14),
+            width=120,
+            height=40,
+            corner_radius=10
+        )
+        back_button.pack(side="left", padx=10, pady=10)
+
+    def show_book_list(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+        title_label = ctk.CTkLabel(
+            self.main_frame,
             text="Список книг",
-            font=("CustomFont", 28, "bold"),  # Увеличенный размер текста заголовка
+            font=("CustomFont", 28, "bold"),
             fg_color=Colors.BACKGROUND_COLOR,
             text_color=Colors.TEXT_COLOR
         )
         title_label.pack(pady=10)
 
-        # Получение списка книг из папки "books"
         books = self.get_books_from_directory("books")
         if not books:
             messagebox.showinfo("Список книг", "Нет загруженных книг.")
-            self.create_main_screen()  # Возвращаемся на главный экран, если книг нет
+            self.create_main_screen()
             return
 
-        # Кнопки для каждой книги
         for book in books:
             book_button = ctk.CTkButton(
                 self.main_frame,
                 text=book,
                 command=lambda b=book: self.open_book(b),
-                fg_color=Colors.BUTTON_COLOR,  # Цвет кнопки книги из класса Colors
-                text_color=Colors.BUTTON_TEXT_COLOR,  # Цвет текста кнопки книги из класса Colors
-                font=("CustomFont", 18),  # Размер шрифта для кнопки книги
-                width=400,  # Ширина кнопки книги
-                height=80,  # Высота кнопки книги
+                fg_color=Colors.BUTTON_COLOR,
+                text_color=Colors.BUTTON_TEXT_COLOR,
+                font=("CustomFont", 18),
+                width=400,
+                height=80,
                 corner_radius=15
             )
             book_button.pack(pady=5)
 
-        # Кнопка "Назад" в левом нижнем углу
-        back_icon = Image.open("assets/images/icons/prev.png").resize((20, 20), Image.LANCZOS)
-        self.back_icon_photo = ImageTk.PhotoImage(back_icon)
 
         back_button = ctk.CTkButton(
             self.main_frame,
@@ -142,58 +257,32 @@ class BookGUI:
             command=self.create_main_screen,
             fg_color=Colors.BUTTON_COLOR,
             text_color=Colors.BUTTON_TEXT_COLOR,
-            font=("CustomFont", 14),  # Размер шрифта для кнопки назад
-            width=120,  # Ширина кнопки назад
-            height=40,  # Высота кнопки назад
+            font=("CustomFont", 14),
+            width=120,
+            height=40,
             corner_radius=10
         )
-        back_button.pack(side="left", padx=10, pady=10)  # Размещение кнопки "Назад" в левом нижнем углу
+        back_button.pack(side="left", padx=10, pady=10)
 
     def get_books_from_directory(self, directory):
-        # Получение списка названий книг из указанной директории
         return [f for f in os.listdir(directory) if f.endswith('.txt')]
 
     def open_book(self, book_name):
-        # Получение пути к книге
         book_path = os.path.join("books", book_name)
         encodings = ['utf-8', 'latin-1', 'cp1251']
 
-        # Чтение содержимого книги
         for encoding in encodings:
             try:
-                with open(book_path, 'r', encoding=encoding) as book_file:
-                    content = book_file.readlines()
+                with open(book_path, "r", encoding=encoding) as file:
+                    book_content = file.read()
                 break
             except UnicodeDecodeError:
                 continue
 
-        # Очистка предыдущего содержимого
+        # Отображение содержимого книги
         for widget in self.main_frame.winfo_children():
             widget.destroy()
 
-        # Заголовок книги
-        title_label = ctk.CTkLabel(
-            self.main_frame,
-            text=book_name,
-            font=("CustomFont", 24, "bold"),
-            fg_color=Colors.BACKGROUND_COLOR,
-            text_color=Colors.TEXT_COLOR
-        )
-        title_label.pack(pady=10)
-
-        # Создание фрейма для текста книги
-        text_frame = ctk.CTkFrame(self.main_frame, fg_color="white", width=600, height=400)
-        text_frame.place(relx=0.5, rely=0.5, anchor="center")  # Центрируем фрейм
-
-        # Текстовая область для отображения страницы
-        self.page_text = tk.Text(text_frame, wrap=tk.WORD, bg="white", fg="black", font=("CustomFont", 16))
-        self.page_text.pack(fill=tk.BOTH, expand=True)
-
-        # Инициализация переменных для управления страницами
-        self.content = content
-        self.current_page = 0
-
-        # Кнопка "Назад" для возврата к списку книг в левом нижнем углу
         back_button = ctk.CTkButton(
             self.main_frame,
             text="Назад",
@@ -205,57 +294,13 @@ class BookGUI:
             height=40,
             corner_radius=10
         )
-        back_button.pack(side=tk.BOTTOM, anchor="sw", padx=10, pady=(10, 20))  # Левый нижний угол с отступом
+        back_button.pack(side="top", anchor="nw", padx=10, pady=10)
 
-        # Кнопка "Назад" для листания с иконкой
-        prev_icon = Image.open("assets/images/icons/prev.png").resize((20, 20), Image.LANCZOS)
-        self.prev_icon_photo = ctk.CTkImage(prev_icon)  # Используем CTkImage вместо PIL.ImageTk.PhotoImage
+        text_box = tk.Text(self.main_frame, wrap="word", font=("CustomFont", 14), bg=Colors.BACKGROUND_COLOR)
+        text_box.insert("1.0", book_content)
+        text_box.config(state="disabled")
+        text_box.pack(fill="both", expand=True, padx=10, pady=10)
 
-        prev_button = ctk.CTkButton(
-            self.main_frame,
-            text=" ",
-            image=self.prev_icon_photo,
-            command=lambda: self.change_page(-1),
-            fg_color=Colors.BUTTON_COLOR,
-            text_color=Colors.BUTTON_TEXT_COLOR,
-            font=("CustomFont", 14),
-            width=60,
-            height=40,
-            corner_radius=10
-        )
-        prev_button.place(relx=0.1, rely=0.7, anchor="sw")  # Левый нижний угол (подняли выше)
-
-        # Кнопка "Вперед" для листания с иконкой
-        next_icon = Image.open("assets/images/icons/next.png").resize((20, 20), Image.LANCZOS)
-        self.next_icon_photo = ctk.CTkImage(next_icon)  # Используем CTkImage вместо PIL.ImageTk.PhotoImage
-
-        next_button = ctk.CTkButton(
-            self.main_frame,
-            text=" ",
-            image=self.next_icon_photo,
-            command=lambda: self.change_page(1),
-            fg_color=Colors.BUTTON_COLOR,
-            text_color=Colors.BUTTON_TEXT_COLOR,
-            font=("CustomFont", 14),
-            width=60,
-            height=40,
-            corner_radius=10
-        )
-        next_button.place(relx=0.9, rely=0.7, anchor="se")  # Правый нижний угол (подняли выше)
-
-        # Метка для отображения номера текущей страницы в правом нижнем углу
-        self.page_label = ctk.CTkLabel(
-            self.main_frame,
-            text=f"Страница {self.current_page + 1} из {len(self.content)}",
-            fg_color=Colors.BACKGROUND_COLOR,
-            text_color=Colors.TEXT_COLOR,
-            font=("CustomFont", 14)
-        )
-        self.page_label.place(relx=0.9, rely=1, anchor="se", padx=10, pady=10)  # Правый нижний угол
-
-        # Инициализация отображения первой страницы
-        self.page_text.delete(1.0, tk.END)  # Очистка текстовой области
-        self.page_text.insert(tk.END, self.content[self.current_page])  # Вставка текста текущей страницы
 
 
 
