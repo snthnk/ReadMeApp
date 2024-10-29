@@ -1,9 +1,10 @@
 import os
 import tkinter as tk
-from tkinter import filedialog, font, messagebox
+from tkinter import filedialog, font, messagebox, simpledialog
 from src.styles import Colors
 import customtkinter as ctk
 from PIL import Image, ImageTk
+from src.text_compress_tool import compress_text
 from src.make_recommendation_tool import make_recommendation  # Импорт функции make_recommendation
 
 
@@ -270,6 +271,7 @@ class BookGUI:
     def open_book(self, book_name):
         book_path = os.path.join("books", book_name)
         encodings = ['utf-8', 'latin-1', 'cp1251']
+        first_open = not os.path.exists(f"{book_path}.opened")
 
         for encoding in encodings:
             try:
@@ -279,27 +281,118 @@ class BookGUI:
             except UnicodeDecodeError:
                 continue
 
-        # Отображение содержимого книги
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+      # При первом открытии книги спрашиваем о сжатии
+        if first_open:
+            result = messagebox.askquestion(
+                "Сжатие книги",
+                "Хотите ли вы сжать книгу?",
+                icon="question",
+                type=messagebox.YESNO
+            )
+            if result == 'yes':
+                pages_per_day = simpledialog.askinteger(
+                    "Количество страниц в день",
+                    "Введите количество страниц, которое вы хотите читать в день:",
+                    minvalue=1
+                )
+                days = simpledialog.askinteger(
+                    "Количество дней",
+                    "Введите количество дней, в течение которых вы планируете прочитать книгу:",
+                    minvalue=1
+                )
+                # Сжатие содержимого книги
+                book_content = compress_text(book_content, pages_per_day, days)
+                
+                # Сохранение сжатого содержимого обратно в файл
+                with open(book_path, "w", encoding="utf-8") as file:
+                    file.write(book_content)
+                
+            # Создаем метку о первом открытии книги
+            with open(f"{book_path}.opened", "w") as file:
+                file.write("opened")
 
-        back_button = ctk.CTkButton(
-            self.main_frame,
-            text="Назад",
-            command=self.show_book_list,
-            fg_color=Colors.BUTTON_COLOR,
-            text_color=Colors.BUTTON_TEXT_COLOR,
-            font=("CustomFont", 14),
-            width=120,
-            height=40,
-            corner_radius=10
-        )
-        back_button.pack(side="top", anchor="nw", padx=10, pady=10)
+        # Разделение текста на страницы (например, 8000 символов на страницу)
+        cleaned_content = ' '.join(book_content.split())  # Убирает лишние пробелы
+        self.page_content = [cleaned_content[i:i+8000] for i in range(0, len(cleaned_content), 8000)]
+        # self.page_content = [book_content[i:i+3000] for i in range(0, len(book_content), 3000)]
+        self.current_page = 0
 
-        text_box = tk.Text(self.main_frame, wrap="word", font=("CustomFont", 14), bg=Colors.BACKGROUND_COLOR)
-        text_box.insert("1.0", book_content)
-        text_box.config(state="disabled")
-        text_box.pack(fill="both", expand=True, padx=10, pady=10)
+        # Функция отображения страницы
+        def show_page():
+            # Очистка текущего содержимого
+            for widget in self.main_frame.winfo_children():
+                widget.destroy()
+
+            # Кнопка назад
+            back_button = ctk.CTkButton(
+                self.main_frame,
+                text="Назад",
+                command=self.create_main_screen,
+                fg_color=Colors.BUTTON_COLOR,
+                text_color=Colors.BUTTON_TEXT_COLOR,
+                font=("CustomFont", 14),
+                width=120,
+                height=40,
+                corner_radius=10
+            )
+            back_button.pack(side="top", anchor="nw", padx=10, pady=10)
+
+            # Текст страницы
+            text_box = tk.Text(self.main_frame, wrap="word", font=("CustomFont", 14), bg=Colors.BACKGROUND_COLOR)
+            text_box.insert("1.0", self.page_content[self.current_page])
+            text_box.config(state="disabled")
+            text_box.pack(fill="both", expand=True, padx=10, pady=10)
+
+            # Показ текущей страницы
+            page_label = tk.Label(
+                self.main_frame,
+                text=f"Страница {self.current_page + 1} из {len(self.page_content)}",
+                font=("CustomFont", 12),
+                bg=Colors.BACKGROUND_COLOR,
+                fg=Colors.BUTTON_TEXT_COLOR
+            )
+            page_label.pack(side="bottom", pady=5)
+
+            # Кнопки переключения страниц
+            prev_button = ctk.CTkButton(
+                self.main_frame,
+                text="Предыдущая страница",
+                command=prev_page,
+                fg_color=Colors.BUTTON_COLOR,
+                text_color=Colors.BUTTON_TEXT_COLOR,
+                font=("CustomFont", 14),
+                width=120,
+                height=40,
+                corner_radius=10
+            )
+            prev_button.pack(side="left", padx=10, pady=10)
+
+            next_button = ctk.CTkButton(
+                self.main_frame,
+                text="Следующая страница",
+                command=next_page,
+                fg_color=Colors.BUTTON_COLOR,
+                text_color=Colors.BUTTON_TEXT_COLOR,
+                font=("CustomFont", 14),
+                width=120,
+                height=40,
+                corner_radius=10
+            )
+            next_button.pack(side="right", padx=10, pady=10)
+
+        # Функции для переключения страниц
+        def next_page():
+            if self.current_page < len(self.page_content) - 1:
+                self.current_page += 1
+                show_page()
+
+        def prev_page():
+            if self.current_page > 0:
+                self.current_page -= 1
+                show_page()
+
+        # Отображение первой страницы
+        show_page()
 
 
 
