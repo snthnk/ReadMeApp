@@ -92,21 +92,3 @@ def compress_text(text, pages_per_day, days):
     """
     target_sentences = calculate_target_sentences(pages_per_day, days)
     return get_tfidf_summary(text, target_sentences)
-
-# Пример использования
-# file_path = 'example_book.txt'  # Замените на путь к вашей книге в формате .txt
-# book_text = read_text_file(file_path)
-
-# # Ввод от пользователя
-# pages_per_day = int(input("Сколько страниц вы готовы читать в день? "))
-# days = int(input("За сколько дней вы хотите прочитать книгу? "))
-
-# # Сжатие текста
-# compressed_text = compress_text(book_text, pages_per_day, days)
-
-# # Вывод сжатого текста
-# output_path = 'compressed_book.txt'
-# with open(output_path, 'w', encoding='utf-8') as file:
-#     file.write(compressed_text)
-
-# print(f"Сжатый текст сохранён в файл {output_path}")
